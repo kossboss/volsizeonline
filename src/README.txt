@@ -1,3 +1,5 @@
+##### VERSION 1.3 (November 30th, 2012) ##### 
+
 Just put these into a www folder
 
 This works if put on a server where php, mysql are running and the table is created for this I created my table like:
@@ -30,3 +32,8 @@ raid6aftertb DOUBLE,
 extra TEXT,
 PRIMARY KEY (id)
 )
+
+##### VERSION 1.4 (December, 3rd 2012) ##### 
+
+Added IP column for remote ip (for statistic information, not hacking) of clients:
+ALTER TABLE XRaid ADD ip varchar(15)
