@@ -1,3 +1,5 @@
+NOTE: latest code is actually at URL listed below, not in the Github Repo
+
 volsizeonline
 =============
 
@@ -9,7 +11,10 @@ What this does
 This calculates the XRAID and FLEXRAID volumes of Netgear READYNAS
 XRAID and FLEXRAID can either be setup as RAID1, RAID5 or RAID6 (in the newer NASes even RAID10 or RAID0)
 
-ram.kossboss.com/xraid
+URL: ram.kossboss.com/xraid
+CURRENT CODE HERE: 1.4
+CURRENT CODE IN URL: much newer
+TO SEE SOURCE CODE: Right click in your browser and hit View Source code. Im hiding nothing.
 
 This calculator doesnt take into account:
 1. expansion, and it wont, i dont want to put the time variable into it (or initial setup and new setup)
