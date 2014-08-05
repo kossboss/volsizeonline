@@ -1,0 +1,617 @@
+<html>
+
+<head>
+	<title>XRAID Volume Calculator - Site Edition - v1.9</title>
+	<meta name="description" content="This a volume size calculator for XRAID system used on the NETGAER READYNAS">
+	<meta name="keywords" content="volume, vol, volsize, volsizecalc, calculator, xraid, raid5, raid6, netgear, readynas, raid">
+	<meta name="author" content="kossboss">
+	<script language="JavaScript" src="http://j.maxmind.com/app/geoip.js"></script>
+	<script type="text/javascript">
+	// code made purty with http://www.askapache.com/online-tools/javascript-beauty/
+	vers = 1.9
+
+	function runScript(e) {
+		if(e.keyCode == 13) {
+			calc();
+			return false;
+		}
+	}
+
+	function checknum(x) {
+		var anum = /(^\d+$)|(^\d+\.\d+$)/;
+		if(anum.test(x)) testresult = true;
+		else {
+			testresult = false;
+		}
+		return(testresult);
+	}
+
+	function contains(a, obj) {
+		var i = a.length;
+		while(i--) {
+			if(a[i] === obj) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function indexofd(a, obj) {
+		var i = a.length;
+		while(i--) {
+			if(a[i] === obj) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	function request(query) {
+		if(window.XMLHttpRequest) {
+			xmlhttp = new XMLHttpRequest();
+		} else {
+			xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		}
+		xmlhttp.onreadystatechange = function () {
+			if(xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+				//it worked.
+				//alert(xmlhttp.responseText); //this is the output of your query.php file
+			}
+		}
+		xmlhttp.open("GET", "query.php?q=" + query, true);
+		xmlhttp.send();
+	}
+	//// MAIN FUNCITON
+	function calc() {
+		var divobj0 = document.getElementById('results0');
+		var divobj1 = document.getElementById('results1');
+		var divobj2 = document.getElementById('results2');
+		var divobj3 = document.getElementById('results3');
+		var divobj4 = document.getElementById('results4');
+		divobj0.style.display = 'block';
+		divobj0.innerHTML = "";
+		divobj1.style.display = 'block';
+		divobj1.innerHTML = "";
+		divobj2.style.display = 'block';
+		divobj2.innerHTML = "";
+		divobj3.style.display = 'block';
+		divobj3.innerHTML = "";
+		divobj4.style.display = 'block';
+		divobj4.innerHTML = "";
+		// constants
+		var intel = 4.512;
+		var arm = intel;
+		var sparc = arm / 2;
+		// arch
+		var theForm = document.forms["volform"];
+		var selecteda = theForm.elements["selectedarch"];
+		var sarch;
+		var osandswap = 0;
+		for(var i = 0; i < selecteda.length; i++) {
+			if(selecteda[i].checked) {
+				sarch = selecteda[i].value;
+				if(sarch == "intel") {
+					osandswap = intel;
+				} else if(sarch == "arm") {
+					osandswap = arm;
+				} else if(sarch == "sparc") {
+					osandswap = sparc;
+				}
+				break;
+			}
+		}
+		var d1 = parseFloat(document.getElementById('dr1').value);
+		var d2 = parseFloat(document.getElementById('dr2').value);
+		var d3 = parseFloat(document.getElementById('dr3').value);
+		var d4 = parseFloat(document.getElementById('dr4').value);
+		var d5 = parseFloat(document.getElementById('dr5').value);
+		var d6 = parseFloat(document.getElementById('dr6').value);
+		var d7 = parseFloat(document.getElementById('dr7').value);
+		var d8 = parseFloat(document.getElementById('dr8').value);
+		var d9 = parseFloat(document.getElementById('dr9').value);
+		var d10 = parseFloat(document.getElementById('dr10').value);
+		var d11 = parseFloat(document.getElementById('dr11').value);
+		var d12 = parseFloat(document.getElementById('dr12').value);
+		var snapshot = parseFloat(document.getElementById('snapsize').value);
+		var drives = new Array();
+		drives[0] = d1;
+		drives[1] = d2;
+		drives[2] = d3;
+		drives[3] = d4;
+		drives[4] = d5;
+		drives[5] = d6;
+		drives[6] = d7;
+		drives[7] = d8;
+		drives[8] = d9;
+		drives[9] = d10;
+		drives[10] = d11;
+		drives[11] = d12;
+		var drivesizes = 0; // number of unique drive sizes
+		var ds = new Array();
+		var i1 = 0;
+		var islegit = true;
+		var numnum = 0;
+		for(var i = 0; i < 12; i++) {
+			islegit = checknum(drives[i]);
+			if(islegit == false) {
+				var numofbaddrive = i + 1;
+				divobj0.style.display = 'block';
+				divobj1.style.display = 'block';
+				divobj0.innerHTML = "<b>FAIL: Need to pick a number for a drive size</b>";
+				divobj1.innerHTML = "Drive " + numofbaddrive + " is not given a size with a number. You must enter a legit number. Please enter a number in units of GB [in base 10].";
+				return;
+			}
+			if(drives[i] > 0) {
+				numnum++;
+			}
+			if(drives[i] != 0) {
+				ds[i1] = drives[i];
+				i1++;
+			}
+		}
+		ds.sort(function (a, b) {
+			return a - b;
+		});
+		var hist = new Array(); // not used
+		var chist = new Array(); // not used - how many chunks of disk space do i have between 0 to 500 gb, 500gb to 1000gb, 1000 gb to 1500gb (it splits it up accordingly)
+		var chist5 = new Array(); // raid 5 chunks - same as above but subtract one from each chunk level as 1 full drive size (no matter how scattered it is) is used for parity
+		var chist6 = new Array(); // raid 6 chunks - same as above but subtract one from each chunk level as 2 full drive sizes are used for parity (also no matter how scattered they are)
+		//init arrays
+		var ds_size = ds.length;
+		for(var g = 0; g < ds_size; g++) {
+			hist[g] = 0;
+			chist[g] = 0; // chunks - counting total chunks in each bucket, histogram
+			chist5[g] = -1; // for raid5 calc - 1 of the chunks will be used for parity, histogram
+			chist6[g] = -2; // for raid6 calc - 2 of the chunks will be used for parity. histogram
+		}
+		var indofdrive;
+		for(var i = 0; i < 12; i++) {
+			indofdrive = indexofd(ds, drives[i]);
+			// alert("d:" +drives[i]+ " is at "+ indofdrive);
+			if(indofdrive != -1) {
+				hist[indofdrive]++; // drive size histogram - chunk histogram below - the sorting from smallest to biggest was important for tihs effect
+				for(var j = 0; j <= indofdrive; j++) {
+					chist[j]++; // no raid chunk histogram - not used 
+					chist5[j]++; // raid5 chunk histogram
+					chist6[j]++; // raid6 chunk histogram
+				}
+			}
+		}
+		var sum10gb = 0;
+		var val1;
+		for(var i = 0; i < drives.length; i++) {
+			if(drives[i] > 0) { //**
+				val1 = drives[i];
+				sum10gb = sum10gb + val1;
+			}
+		}
+		var cfgb2gb = 0.93132257461;
+		var cftb2tb = 0.90949470177;
+		var sum2gb = sum10gb * cfgb2gb;
+		var sum10tb = sum10gb / 1000;
+		var sum2tb = sum2gb / 1024;
+		var dstart = 0;
+		var dend = 0;
+		var diffd = 0;
+		var q = 0;
+		var q10 = 0;
+		var q2 = 0;
+		var toraid5 = 0; // base 10 gb - chunks will be summed into this from the raid5 chunk histogram
+		var toraid6 = 0; // base 10 gb - chunks will be summed into this from the raid6 chunk histogram
+		var par5 = 0; // base 10 gb - parity 1 drive for raid 1 (take the biggest used drive - top of the biggest used chunk is the biggest used drive)
+		var par6 = 0; // base 10 gb - parity 2 drives for raid 6 (take the biggest used drive - top of the biggest used chunk is the biggest used drive)
+		var unused5 = 0; // base 10 gb - same comment as below
+		var unused6 = 0; // base 10 gb - unuseable space because drives need a pair to be used for data or protection, raid6 needs 4, raid 5 needs 2
+		for(var c = 0; c < ds_size; c++) {
+			if(c == 0) {
+				dstart = 0;
+			} else {
+				dstart = ds[c - 1];
+			}
+			dend = ds[c];
+			diffd = dend - dstart;
+			q = chist[c];
+			q10 = (q * diffd) / 1000;
+			q2 = (q * diffd * cfgb2gb) / 1024;
+			if((chist5[c]) > 0) //if negative or zero dont count
+			{
+				toraid5 += chist5[c] * diffd;
+				//par5 = top_height_of_biggest_chunk; // logically top_height_of_biggest_chunk is usuaully equal to the size of the biggest drive - in parity its counted once for raid5
+				if(dend > par5) {
+					par5 = dend;
+				}
+			}
+			// FOR RAID 6 - at least 4 raid devices needed at all times, thats for md2,md3,md4, etc (so for any chunk)
+			// UPDATE 3/13/2013 TO FIX RAID 6 - INSTEAD OF WORKING WITH 3 DEVICES BUT 4 CHANGED THE FOLLOWING CODE SECOTION
+			// IF RAID 6 WORKED WITH 3 DEVICES - BUT IT DOESNT SO THIS IS WRONG:
+			//if ((chist6[c]) > 0) //if negative or zero dont count
+			//{
+			//   toraid6 += chist6[c] * diffd;
+			//}
+			// CORRECT: (NOTICE JUST ADDED THE -1)
+			if((chist6[c] - 1) > 0) //if negative or zero dont count
+			{
+				//alert("p6:" + par6);
+				toraid6 += chist6[c] * diffd;
+				//par6 = top_heigh_of_biggest_chunk * 2; // logically top_height_of_biggest_chunk is usually equal to the size of the biggestdrive - in parity its counted twice for raid6
+				if(dend > par6) {
+					par6 = dend;
+				}
+			}
+			// END OF UPDATE 3/13/2013 TO FIX RAID 6
+		}
+		par6 = par6 * 2; // need to multiply par6 by two, if did in the loop it would of failed the logic
+		unused5 = sum10gb - (toraid5 + par5);
+		unused6 = sum10gb - (toraid6 + par6);
+		var par5tb = par5 / 1000; // get base 10 tb
+		var par6tb = par6 / 1000; // get base 10 tb
+		var unused5tb = unused5 / 1000; // get base 10 tb
+		var unused6tb = unused6 / 1000; // get base 10 tb
+		//alert("par5: " + par5 + " par6: " + par6);
+		var toraid5tb = toraid5 / 1000; //both in base 10
+		var toraid6tb = toraid6 / 1000;
+		var correctional1 = 1.01594;
+		var correctional5 = 1.01594;
+		var correctional6 = 1.01594;
+		var raid_overhead_percent = 2;
+		var raid_overhead = raid_overhead_percent / 100;
+		var spaceR52 = toraid5 * cfgb2gb;
+		var spaceR52Tb = spaceR52 / 1024;
+		var spaceR62 = toraid6 * cfgb2gb;
+		var spaceR62Tb = spaceR62 / 1024;
+		var totalosandswap = osandswap * numnum; // totalos + totalswap;
+		var afteros5 = spaceR52 - totalosandswap;
+		var afteros6 = spaceR62 - totalosandswap;
+		var afterOverhead5 = afteros5 * (1 - raid_overhead);
+		var afterOverhead6 = afteros6 * (1 - raid_overhead);
+		var final5Gb = (afterOverhead5 - snapshot) * correctional5;
+		var final6Gb = (afterOverhead6 - snapshot) * correctional6;
+		var final5Tb = (final5Gb / 1024) * correctional5;
+		var final6Tb = (final6Gb / 1024) * correctional6;
+		var extrabit = "";
+		if(numnum == 2 || numnum == 3) {
+			extrabit = "<strong>WITH ONLY 2 OR 3 DRIVES, IGNORE THESE RAID6 VALUES BELOW. REFER TO ABOVE RAID5 VALUES INSTEAD</strong><br/>"
+		}
+		extra1 = "version: " + vers
+		s = ","
+		codecountry = "'" + geoip_country_code() + "'";
+		namecountry = "'" + geoip_country_name() + "'";
+		city = "'" + geoip_city() + "'";
+		region = "'" + geoip_region() + "'";
+		nameregion = "'" + geoip_region_name() + "'";
+		postalcode = "'" + geoip_postal_code() + "'";
+		latitude = geoip_latitude();
+		longitude = geoip_longitude();
+		if(numnum > 1) {
+			divobj0.style.display = 'block';
+			divobj0.innerHTML = "Given Size [base 10]: " + sum10gb.toFixed(3) + " GB = " + sum10tb.toFixed(3) + " TB";
+			divobj1.style.display = 'block';
+			divobj1.innerHTML = "Given Size [base 2]: " + sum2gb.toFixed(3) + " GiB = " + sum2tb.toFixed(3) + " TiB<br/><br/>";
+			divobj2.style.display = 'block';
+			divobj2.innerHTML = "<br/><strong>Single Disk Redundancy / Flexraid Raid 5 / XRaid Raid 5</strong><br/><strong>- Disk Space</strong> with Raid5 [base 10]: " + toraid5.toFixed(3) + " GB = <strong>" + toraid5tb.toFixed(3) + " TB</strong><br/>" + "<strong>- Final Useable/Filesystem Size</strong> with Raid5 [base 2]: " + final5Gb.toFixed(3) + " GiB = <strong>" + final5Tb.toFixed(3) + " TiB</strong><br/><strong>- Protection/Parity Size</strong> with Raid5 [base 10]: " + par5 + " GB = <strong>" + par5tb + " TB</strong><br/>- Unused Space [base 10]: " + unused5 + " GB = " + unused5tb + " TB<br/>NOTE: Unused space is a result of not having enough drives to pair with - For Single-Disk-Redundancy/mdadm-Raid5 to be used a drive must be paired with 2 equal sized drives (1 drive go to protection/parity, rest to data)<br/><br/>";
+			divobj3.style.display = 'block';
+			divobj3.innerHTML = extrabit + "<br/><strong>Dual Disk Redundancy / Flexraid Raid 6 / XRaid Raid 6</strong><br/><strong>- Disk Space</strong> with Raid6 [base 10]: " + toraid6.toFixed(3) + " GB = <strong>" + toraid6tb.toFixed(3) + " TB</strong>" + "<br/><strong>- Final Useable/Filesystem Size</strong> with Raid6 [base 2]: " + final6Gb.toFixed(3) + " GiB = <strong>" + final6Tb.toFixed(3) + " TiB</strong><br/><strong>- Protection/Parity Size</strong> with Raid6 [base 10]: " + par6 + " GB = <strong>" + par6tb + " TB</strong><br/>- Unused Space [base 10]: " + unused6 + " GB = " + unused6tb + " TB<br/>NOTE: Unused space is a result of not having enough drives to pair with - For Dual-Disk-Redundancy/mdadm-Raid6 to be used a drive myst be paired with 4 equal sized drives (2 drives go to protection/parity, rest to data)";
+			divobj4.style.display = 'block';
+			divobj4.innerHTML = "<strong>===GIVEN:===</strong><br/><br/>Given: " + numnum + " drives";
+			info11 = s + "'" + sarch + "'" + s + snapshot + s + 1 + s + numnum + s + d1 + s + d2 + s + d3 + s + d4 + s + d5 + s + d6 + s + d7 + s + d8 + s + d9 + s + d10 + s + d11 + s + d12 + s + sum10tb + s + toraid5tb + s + toraid6tb + s + final5Tb + s + final6Tb + s + "'" + extra1 + "'" + s + codecountry + s + namecountry + s + city + s + region + s + nameregion + s + postalcode + s + latitude + s + longitude;
+			qry = "INSERT INTO XRaid (time,arch,snapshot,onedisk,numberofdisks,d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,d11,d12,rawtb,raid5beforetb,raid6beforetb,raid5aftertb,raid6aftertb,extra,country_code,country_name,city,region,region_name,postal_code,latitude,longitude,ip) VALUE (NOW()" + info11 + ",";
+			request(qry)
+		} else { //if numnum =1 disk just 1 disk
+			var onediskgb = 0;
+			var onedisktb = 0;
+			onediskgb = ((sum2gb - totalosandswap) * (1 - raid_overhead) - snapshot) * correctional1;
+			onedisktb = onediskgb / 1024;
+			divobj0.style.display = 'block';
+			divobj0.innerHTML = "Given Size [base 10]: " + sum10gb.toFixed(3) + " GB = " + sum10tb.toFixed(3) + " TB";
+			divobj1.style.display = 'block';
+			divobj1.innerHTML = "Given Size [base 2]: " + sum2gb.toFixed(3) + " GiB = " + sum2tb.toFixed(3) + " TiB<br/><br/>";
+			divobj2.style.display = 'block';
+			divobj2.innerHTML = "<br/>";
+			divobj3.style.display = 'block';
+			divobj3.innerHTML = "<strong>- Final Useable/Filesystem Size</strong> [base 2] with 1 disk: " + onediskgb.toFixed(3) + " GiB = <strong>" + onedisktb.toFixed(3) + " TiB</strong></br>NOTE: no Parity/Protection space with 1 drive - also - no Unused space with 1 drive";
+			divobj4.style.display = 'block';
+			divobj4.innerHTML = "<strong>===GIVEN:===</strong><br/><br/>Given: 1 drive";
+			info11 = s + "'" + sarch + "'" + s + snapshot + s + 0 + s + numnum + s + d1 + s + d2 + s + d3 + s + d4 + s + d5 + s + d6 + s + d7 + s + d8 + s + d9 + s + d10 + s + d11 + s + d12 + s + sum10tb.toFixed(3) + s + onedisktb.toFixed(3) + s + 0 + s + 0 + s + 0 + s + "'one disk result in raid5tb field, " + extra1 + "'" + s + codecountry + s + namecountry + s + city + s + region + s + nameregion + s + postalcode + s + latitude + s + longitude;
+			qry = "INSERT INTO XRaid (time,arch,snapshot,onedisk,numberofdisks,d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,d11,d12,rawtb,raid5beforetb,raid6beforetb,raid5aftertb,raid6aftertb,extra,country_code,country_name,city,region,region_name,postal_code,latitude,longitutde,ip) VALUE (NOW()" + info11 + ",";
+			request(qry)
+		}
+	}
+	</script>
+	<style>
+	div.ex {
+		width: 600px;
+		padding: 10px;
+		border: 5px solid gray;
+		margin: 10px;
+	}
+	div.ex1 {
+		width: 700px;
+		padding: 10px;
+		border: 5px solid;
+		margin: 10px;
+	}
+	body {
+		background-color: #CCE0FF;
+	}
+	div {
+		background-color: #FFF0D1;
+	}
+	div.ex1 {
+		background-color: #80FFFF;
+	}
+	</style>
+	<script type="text/javascript">
+	//<![CDATA[
+	// Google Analytics for WordPress by Yoast v4.3.4 | http://yoast.com/wordpress/google-analytics/
+	var _gaq = _gaq || [];
+	_gaq.push(['_setAccount', 'UA-34782524-2']);
+	_gaq.push(['_trackPageview']);
+	(function () {
+		var ga = document.createElement('script');
+		ga.type = 'text/javascript';
+		ga.async = true;
+		ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js'; < F4 >
+		var s = document.getElementsByTagName('script')[0];
+		s.parentNode.insertBefore(ga, s);
+	})();
+	//]]>
+	</script>
+</head>
+
+<body>
+	<form action="" id="volform" onsubmit="return false;">
+		<fieldset>
+			<legend>
+				<div class="ex1"><strong><font size="3">Welcome To</font><br/><font size="4">XRAID Volume Calculator - Site Edition - v1.9</font><br/><font size="2">By: kossboss, Updated: May 9th, 2014</font></strong>
+				</div>
+			</legend>
+			<br/> <strong><label>NOTE: The results come out pretty close, but you cannot sue us if they dont match - ALSO PLEASE READ ALL THE NOTES</label> <br/><br/> </strong>
+			<strong><label><mark>For Readynas 6 (aka OS6): The new READYNAS 6.x uses XRAID with huge differences at the higher layers, BTRFS</br/>(used for volume management and the filesystem in OS6) instead of LVM & EXT (LVM used for volume management and EXT used as filesystem in OS4/OS5).<br/>Thus the EXT filesystem limitations mentioned in the below<br/>Notes DO NOT APPLY for the Readynas 6.x devices.<br/>Just select "Intel" or "ARM" tfrom the Architecture list below, even though the Architecture list is for the Readynas 5.x, the calculations of storage space come out to be close.<br/>Also leave the SNAPSHOT SIZE at 0 for Readynas 6.x calculations, because they are handled completely differently.<br/>Anyhow FINAL RESULTS MAY BE + or - 10% OFF, CANT SUE IF INCORRECT/WRONG.</mark></label> <br/><br/> </strong>
+			<label>Start By Selecting your READYNAS Setup</label>
+			<br/>
+			<br/>
+			<div class="ex">
+				<label><b>(Step 1)</b> Readynas 4.x or 5.x Architecture Type:</label>
+				<input type="radio" name="selectedarch" value="intel" onclick="calc()" checked="true" />Intel / X86
+				<input type="radio" name="selectedarch" value="arm" onclick="calc()" />ARM
+				<input type="radio" name="selectedarch" value="sparc" onclick="calc()" />SPARC
+				<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For Readynas 6.x use Intel or ARM depending on unit</div>
+			<br/>
+			<br/>
+			<div class="ex">
+				<label><b>(Step 2)</b> Snapshot Size (between 0 and 100 GB) [GB, base 10]:</label>
+				<input type="text" id="snapsize" name="snapsize" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;For Readynas 6.x use 0 GB snapshot</div>
+			<br/>
+			<br/>
+			<label><b> Note on Step 3:</b> Fill the Slots with Drive Sizes (Using drive sizes that the manufacturers reports, so in base 10):</label>
+			<br/>
+			<br/>
+			<label><strong>Note 1:</strong> Use drive sizes that are listed on the compatability list on Readynas.com</label>
+			<br/>
+			<label>So far those sizes [in GB base 10] that are supported: 500, 750, 1000, 1500, 2000, 3000, 4000</label>
+			<br/>
+			<label>In this app you can put in other sizes but Netgear only recommends and supported drives listed in the compatability list</label>
+			<br/>
+			<br/>
+			<label><strong>Note 2:</strong> If you have a HOT SPARE, leave it out of the calculation, it picks the biggest drive and 0s it on the calculation.</label>
+			<br/>
+			<label>To emulate a HOT SPARE - For example in a system with three 1TB and one 2TB drive. Just put into the app the three 1TB drives.</label>
+			<br/>
+			<br/>
+			<label><b>To clear all the values just Refresh the page or press F5 on your keyboard</b>
+			</label>
+			<br/>
+			<br/>
+			<div class="ex">
+				<label><b>(Step 3)</b> Fill the Slots with Drives:</label>
+				</br>
+				<label>Use GBs and Manufacturer's drive sizes, so in base 10 (ex: for 3 TB drive just put 3000)</label>
+				</br>
+				<label><strong>PUT 0 FOR ALL EMPTY SLOTS</strong>
+				</label>
+				<br/>
+				<label>Drive 1 [GB]:</label>
+				<input type="text" id="dr1" name="dr1" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 2 [GB]:</label>
+				<input type="text" id="dr2" name="dr2" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 3 [GB]:</label>
+				<input type="text" id="dr3" name="dr3" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 4 [GB]:</label>
+				<input type="text" id="dr4" name="dr4" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 5 [GB]:</label>
+				<input type="text" id="dr5" name="dr5" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 6 [GB]:</label>
+				<input type="text" id="dr6" name="dr6" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 7 [GB]:</label>
+				<input type="text" id="dr7" name="dr7" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 8 [GB]:</label>
+				<input type="text" id="dr8" name="dr8" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 9 [GB]:</label>
+				<input type="text" id="dr9" name="dr9" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 10 [GB]:</label>
+				<input type="text" id="dr10" name="dr10" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 11 [GB]:</label>
+				<input type="text" id="dr11" name="dr11" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+				<br/>
+				<label>Drive 12 [GB]:</label>
+				<input type="text" id="dr12" name="dr12" value="0" onclick="calc()" onkeypress="return runScript(event)" />
+			</div>
+			<br/>
+			<br/>
+			<label><b>(Step 4)</b> Press this</label>
+			<input type="button" onclick="calc();" value="Calculate">
+			<label>to calculate the result or just press <b>Enter</b>:</label>
+			<br/>
+			<br/>
+			<label><strong>IMPORTANT: </strong>RAID5 for all intensive purposes means SINGLE DISK REDUNDANCY and RAID6 means DUAL DISK REDUNDANCY</label>
+			<br/>
+			<br/>
+			<div class="ex">
+				<label><strong>#########################</strong>
+				</label>
+				<br/>
+				<br/>
+				<div id="results4"></div>
+				<div id="results0"></div>
+				<div id="results1"></div>
+				<label><strong>==RESULTS (Will go below):==</strong>
+				</label>
+				<div id="results2" style="color:#2424B2"></div>
+				<div id="results3" style="color:#99003D"></div>
+				<br/>
+				<label><strong>#########################</strong>
+				</label>
+			</div>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 3:</strong> What goes into the Calculation?</strong>
+			</label>
+			<br/>
+			<label>Each calculation takes into account OS & SWAP partition costs per each disk, the snapshot size across the whole volume, and the raid-overhead across the whole volume.</label>
+			<br/>
+			<label>The biggest cost of volume size is in conversion from base 10 size to base 2. Drive manufacturers label 1 TB but actually mean 0.9 TB based on the base 2 to 10 conversion.</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 4:</strong> What values to read?</strong>
+			</label>
+			<br/>
+			<label>* With 1 disk - the given "Final Volume Size" value is correct.</label>
+			<br/>
+			<label>* With 2 disks - XRAID converges to RAID 1, read the "Final Volume Size with Raid 5" for correct the result. (Why? programmatically RAID5 and RAID1 calculations are equal and correct with this algorithm)</label>
+			<br/>
+			<label>* With 3 disks - XRAID converges to RAID 5, read the "Final Volume Size with Raid 5" calculation for correct result.</label>
+			<br/>
+			<label>* With 4+ disks - XRAID converges to RAID 5 or 6 based on your selection on the Volume Settings tab of Frontview, so read "Final Volume Size with Raid 5" or "... 6" depending on your setup.</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 5:</strong> READYNAS Expansion Limitations of the EXT Filesystem</strong>
+			</label>
+			<br/>
+			<label><strong>(1)</strong> An expansion that causes the Filesystem to increase 8 TB since the last Factory Default will fail.</label>
+			<br/>
+			<label><strong>(2)</strong> An expansion that causes the Total Filesystem size to be 16 TB or more after the expansion will fail.</label>
+			<br/>
+			<label>* These sizes refer to the Filesystem Sizes, not raw disk space.</label>
+			<br/>
+			<label>* The solution/workaround for this is to Factory Default with the final volume in place.</label>
+			<br/>
+			<label>* These are not READYNAS limitations, but more of Linux Kernel and EXT Filesystem Limitations.</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 6a:</strong> Can NOT Add SMALLER Drives</strong>
+			</label>
+			<br/>
+			<label>When you click CALCULATE above it assumes that this is a fresh start, as if you factory defaulted with that set of disks.</label>
+			<br/>
+			<label>The reason I mention this is because adding SMALLER disks to the disk set works out in this calculator</label>
+			<br/>
+			<label><strong>HOWEVER, in a live unit you cannot add SMALLER disks they would be unused, the partitioning will not work out the new disks would be unused</strong>
+			</label>
+			<br/>
+			<label><strong>What do I mean by SMALLER disks? </strong>Example, if your system only has 2 TB and 3 TB disks, do not add a 1 TB disk.</label>
+			<br/>
+			<label>The WORKAROUND for the system to accept the SMALLER disks is to backup your data and factory default with all disks put in place</label>
+			<br/>
+			<label><strong>The BEST SOLUTION in my opinion is to only add bigger disks, or new disks equal in size to any of the disks operating in the system</strong>
+			</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 6b:</strong> Can NOT Add INBETWEEN Drives</strong>
+			</label>
+			<br/>
+			<label>When you click CALCULATE above it assumes that this is a fresh start, as if you factory defaulted with that set of disks.</label>
+			<br/>
+			<label>The reason I mention this is because adding INBETWEEN disks to the disk set works out in this calculator</label>
+			<br/>
+			<label><strong>HOWEVER, in a live unit you cannot add INBETWEEN disks they would be unused, the partitioning will not work out</strong>
+			</label>
+			<br/>
+			<label><strong>What do I mean by INBETWEEN disks?</strong> Example, if your system only has 1 TB and 3 TB disks, do not add a 2 TB disk.</label>
+			<br/>
+			<label>The WORKAROUND for the system to accept the INBETWEEN disks is to backup your data and factory default with all disks put in place</label>
+			<br/>
+			<label><strong>The BEST SOLUTION in my opinion is to only add bigger disks, or new disks equal in size to any of the disks operating in the system</strong>
+			</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 7a:</strong> XRAID1 vs. XRAID2</strong>
+			</label>
+			<br/>
+			<label>* XRAID1 is used in the 4.1.x (and old 3.x) firmware of Readynas.</label>
+			<br/>
+			<label>* XRAID2 is used in ReadyNAS 4.2.x 5.x and 6.x.</label>
+			<br/>
+			<label>* XRAID1 uses a proprietary RAID solution which is a like to RAID4 type of behavior - therefore the RAID5 mathematics work out for it in here</label>
+			<br/>
+			<label>Side note: RAID4 and RAID% mathematically in storage space work out to be the same.</label>
+			<br/>
+			<label>On top of XRAID1 sits the EXT filesystem.</label>
+			<br/>
+			<label>* XRAID2 is a genius installation of MDADM on top of carefully carved out partitions, on to which a volume manager is installed.</label>
+			<br/>
+			<label>The volume manager for 4.2.x and 5.3.x is LVM. On top of the LVM goes the EXT filesystem. For 6.x the volume manager and filesystem are combined because BTRFS can handle it all very well.</label>
+			<br/>
+			<br/>
+			<label><strong><strong>Note 7b:</strong> Quick note on XRAID1</strong>- (This might be incorrect so I will see if I can get this looked over and fix it up if needs be)</label>
+			<br/>
+			<label>* The expansion logic with XRAID1 is different than XRAID2. XRAID2 does its best to expand on the fly with every new drive.</label>
+			<br/>
+			<label>* HOWEVER XRAID1 needs a whole set of new (and bigger) sized drives to expand.</label>
+			<br/>
+			<label>* For XRAID1 - there are no longer units available that support this, all the XRAID1 units are End of Life.</label>
+			<br/>
+			<label>* With XRAID1 The idea is you need to replace all of the smaller drives to utilize the full disk usage</label>
+			<br/>
+			<label>* The XRAID1 disk space equation is simple, however its biggest downside is pretty apparent (back in the days of XRAID1 however this remarkable):</label>
+			<br/>
+			<label>* The equation for Total Disk Space(not including Overhead) for XRAID1 is: (smallest disk in array)*(number of drives-1)=Total Disk Space</label>
+			<br/>
+			<label>* For example an array of 80GB, 80GB, 80Gb, 160GB, 160GB, 160GB would have a total storage of (80 GB) * (6-1) = 80 * 5 = 400 GB</label>
+			<br/>
+			<label>From that 400GB don't forget to subtract the overhead, can't tell you off the top of my head, but it's not much.</label>
+			<br/>
+			<label>However this is a close order of magnitude estimation</label>
+			<br/>
+			<label>Also There was never an XRAID1 device with this many drive slots as far as I am aware, the most slots available for an XRAID1 system was 4 slots.</label>
+			<br/>
+			<br/>
+			<br/>
+			<label><strong>Special Thanks goes out to:</strong>
+			</label>
+			<br/> <a href="http://www.readynas.com/kb/faq/boot/why_is_my_volume_capacity_is_lower_than_expected">NETGEAR KB - Chirpas Article</a>
+			<br/>
+			<br/>
+			<label><strong>Read this if confused on base 2 and base 10 disk drive sizes:</strong>
+			</label>
+			<br/> <a href="http://www.howtogeek.com/123268/windows-hard-drive-wrong-capacity/">Why Your Hard Drive Shows Less Space Than Advertised</a>
+			<br/>
+			<br/>
+			<label><strong>--CHANGE LOG:--</strong>
+			</label>
+			<br/>
+			<label><strong>XRAID VOLUME CALCULATOR 1.0 to 1.5 - 9/24/2013:</strong> Made it look better, added some minor calculation fixes (+ or - 1%) to match closer to real READYNAS values. Added some important notes.</label>
+			<br/>
+			<label><strong>XRAID VOLUME CALCULATOR 1.6 - 3/19/2013:</strong> Fixed Raid 6 calculation to only work with 4 members. Before the assumption was RAID 6 works with 3 members (based on logic: Raid 5 works with only 2)</label>
+			<br/>
+			<label><strong>XRAID VOLUME CALCULATOR 1.7 - 8/10/2013:</strong> Updated for ReadyNAS 6.x stuff, code stays the same, just added notes</label>
+			<br/>
+			<label><strong>XRAID VOLUME CALCULATOR 1.8 - 1/29/2014:</strong> Moved to ram.kossboss.com</label>
+			<br/>
+			<label><strong>XRAID VOLUME CALCULATOR 1.9 - 5/9/2014:</strong> More notes at top, and changed base 2 units to TiB and GiB syntax - added Unused and Parity Calc</label>
+			<br/>
+		</fieldset>
+	</form>
+</body>
+
+</html>

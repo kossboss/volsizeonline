@@ -5,6 +5,12 @@ volsizeonline
 
 Volsize online XRAID NETGEAR Calc
 
+How to run
+===========
+
+Running copy is on ram.kossboss.com/xraid
+If you wanna run it your self just run html file in src called index.html (which used to be called xraid.html)
+
 What this does
 ===============
 
@@ -12,7 +18,7 @@ This calculates the XRAID and FLEXRAID volumes of Netgear READYNAS
 XRAID and FLEXRAID can either be setup as RAID1, RAID5 or RAID6 (in the newer NASes even RAID10 or RAID0)
 
 URL: ram.kossboss.com/xraid
-CURRENT CODE HERE: 1.4
+CURRENT CODE HERE: 1.8
 CURRENT CODE IN URL: much newer
 TO SEE SOURCE CODE: Right click in your browser and hit View Source code. Im hiding nothing.
 
@@ -42,3 +48,8 @@ So whats the difference between TRADITIONAL RAID (raid5/6) and XRAID/FLEXRAID (r
 =========================================================================================
 
 Traditional raid doesnt use extra space wisely. So thats where XRAID and FLEXRAID come in.
+
+UPDATE NOTES
+=============
+
+At the bottom of the html file

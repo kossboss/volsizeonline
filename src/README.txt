@@ -37,3 +37,7 @@ PRIMARY KEY (id)
 
 Added IP column for remote ip (for statistic information, not hacking) of clients:
 ALTER TABLE XRaid ADD ip varchar(15)
+
+###### VERSION 1.4 to VERSION latest (August 8th,2014) ####
+
+Look at update notes in the index.html (at the bottom)

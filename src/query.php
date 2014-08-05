@@ -1,9 +1,12 @@
 <?php
 $host='localhost';
-$user='kossboss';
-$pass='aitsok';
+//$user='kossboss';
+$user='xraid';
+//$pass below is fake
+$pass='123456';
 $con=mysql_connect($host,$user,$pass);
-$db='kossboss';
+//$db='kossboss';
+$db='xraid';
 $ip=$_SERVER["REMOTE_ADDR"];
 mysql_select_db($db);
 $q1=$_GET['q'] . "'" . $ip . "')";
